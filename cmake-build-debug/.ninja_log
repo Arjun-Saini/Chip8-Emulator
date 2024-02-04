@@ -1,0 +1,8 @@
+# ninja log v5
+0	358	1707018512064504348	CMakeFiles/Chip8_Emulator.dir/main.cpp.o	672cbe9c560ad414
+359	388	1707018512095901928	Chip8_Emulator	32f16a3c58ce5d38
+2	255	1707018560174590366	CMakeFiles/Chip8_Emulator.dir/main.cpp.o	672cbe9c560ad414
+255	283	1707018560204431329	Chip8_Emulator	32f16a3c58ce5d38
+1	248	1707018603948640399	CMakeFiles/Chip8_Emulator.dir/main.cpp.o	672cbe9c560ad414
+1	219	1707018613212859779	CMakeFiles/Chip8_Emulator.dir/main.cpp.o	672cbe9c560ad414
+219	246	1707018613241091959	Chip8_Emulator	32f16a3c58ce5d38
