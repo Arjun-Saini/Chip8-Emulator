@@ -101,7 +101,7 @@ public:
 
     // Jumps to address NNN
     void OP_1NNN(){
-        uint8_t NNN = opcode & 0x0FFFu;
+        uint16_t NNN = opcode & 0x0FFFu;
 
         programCounter = NNN;
     }
@@ -449,7 +449,9 @@ public:
                     case 0xEu:
                         OP_00EE();
                         break;
+                    default: break;
                 }
+                break;
             case 0x1000u:
                 OP_1NNN();
                 break;
@@ -500,6 +502,7 @@ public:
                     case 0xEu:
                         OP_8XYE();
                         break;
+                    default: break;
                 }
                 break;
             case 0x9000u:
@@ -525,6 +528,7 @@ public:
                     case 0xEu:
                         OP_EX9E();
                         break;
+                    default: break;
                 }
                 break;
             case 0xF000u:
@@ -556,8 +560,10 @@ public:
                     case 0x65u:
                         OP_FX65();
                         break;
+                    default: break;
                 }
                 break;
+            default: break;
         }
     }
 
@@ -653,12 +659,37 @@ void testSuite(){
     chip.opcode = 0xD015u;
     chip.decodeOpcode();
 
-    chip.printGraphics();
+    chip.printInfo();
+}
+
+uint64_t getTime(){
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 int main() {
-    testSuite();
+    // TODO Initialize visual interface and chip, run cycles based on a delay (default at 60Hz)
+    Chip8 cpu = Chip8();
+    cpu.loadROM("test_opcode");
 
-    // TODO Initialize visual interface and chip, run cycles based on a delay (default at 60Hz), decrement counters
+    const int Hz = 60;
+    const int ms_delta = 1000 / Hz;
+
+    uint64_t lastTime = getTime();
+    uint64_t currentTime;
+
+    while(true){
+        currentTime = getTime();
+
+        // TODO update key inputs
+        // TODO play sound
+
+        if(currentTime - lastTime >= ms_delta){
+            lastTime = currentTime;
+            cpu.printInfo();
+            cpu.cycle();
+            // TODO update graphics
+        }
+    }
+
     return 0;
 }
