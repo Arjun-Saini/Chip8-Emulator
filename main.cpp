@@ -3,6 +3,7 @@
 #include <string>
 #include <random>
 #include <chrono>
+#include <SDL.h>
 
 class Chip8{
 public:
@@ -61,16 +62,22 @@ public:
     }
 
     // Loads ROM into memory, starting at address 0x200
-    void loadROM(std::string fileName){
+    void loadROM(std::string execPath, std::string fileName){
+        std::filesystem::path fs_execPath(execPath);
+        // Executable in folder
+        std::string fullPath = fs_execPath.parent_path().parent_path().string() + "/ROMs/" + fileName + ".ch8";
+
+        // Executable not in folder
+//        std::string fullPath = p.parent_path().string() + "/ROMs/" + fileName + ".ch8";
+
         // Open ROM
-        std::ifstream ROM("../ROMs/" + fileName + ".ch8", std::ios::binary);
+        std::ifstream ROM(fullPath, std::ios::binary);
         ROM.seekg(0, std::ios::end);
         fileSize = ROM.tellg();
         ROM.seekg(0, std::ios::beg);
 
         // Load ROM into buffer
         char buffer[fileSize];
-        memset(buffer, 0, fileSize);
         ROM.read(buffer, fileSize);
 
         // Copy buffer into memory
@@ -640,36 +647,25 @@ public:
     }
 };
 
-// TODO Video and Audio processing, use SDL?
-
-void testSuite(){
-    Chip8 chip = Chip8();
-    chip.loadROM("test_suite");
-
-    chip.opcode = 0x6000u;
-    chip.decodeOpcode();
-    chip.opcode = 0x6100u;
-    chip.decodeOpcode();
-    chip.opcode = 0x6208u;
-    chip.decodeOpcode();
-
-    chip.opcode = 0xF229;
-    chip.decodeOpcode();
-
-    chip.opcode = 0xD015u;
-    chip.decodeOpcode();
-
-    chip.printInfo();
-}
-
 uint64_t getTime(){
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-int main() {
-    // TODO Initialize visual interface and chip, run cycles based on a delay (default at 60Hz)
+// TODO Video and Audio processing, use SDL?
+
+int main(int argc, char * argv[]) {
+    // Initialize visual interface and chip, run cycles based on a delay (default at 60Hz)
     Chip8 cpu = Chip8();
-    cpu.loadROM("test_opcode");
+    cpu.loadROM(argv[0], "test_opcode");
+    int scale = 10;
+
+    SDL_Window* window = nullptr;
+    SDL_Renderer* renderer = nullptr;
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_CreateWindowAndRenderer(64 * scale, 32 * scale, 0, &window, &renderer);
+    SDL_RenderSetScale(renderer, scale, scale);
+
+    SDL_Point points[64 * 32];
 
     const int Hz = 60;
     const int ms_delta = 1000 / Hz;
@@ -677,17 +673,38 @@ int main() {
     uint64_t lastTime = getTime();
     uint64_t currentTime;
 
-    while(true){
+    bool isRunning = true;
+    while(isRunning){
         currentTime = getTime();
 
         // TODO update key inputs
         // TODO play sound
+        SDL_Event e;
+        while(SDL_PollEvent(&e)){
+            if(e.type == SDL_QUIT){
+                isRunning = false;
+            }
+        }
 
         if(currentTime - lastTime >= ms_delta){
             lastTime = currentTime;
-            cpu.printInfo();
+//            cpu.printInfo();
             cpu.cycle();
-            // TODO update graphics
+
+            // Clear screen
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+            // Draw pixels
+            for(int i = 0; i < 64; i++){
+                for(int j = 0; j < 32; j++){
+                    if(cpu.graphics[i][j]){
+                        SDL_RenderDrawPoint(renderer, i, j);
+                    }
+                }
+            }
+            SDL_RenderPresent(renderer);
         }
     }
 
