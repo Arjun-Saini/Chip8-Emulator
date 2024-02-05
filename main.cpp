@@ -21,7 +21,6 @@ public:
     std::mt19937 rng;
     std::uniform_int_distribution<uint8_t> distribution;
 
-
     uint8_t font[80] = {
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -46,6 +45,7 @@ public:
         memset(&memory, 0, 4096);
         memset(&registers, 0, 16);
         memset(&stack, 0, 32);
+        memset(&graphics, 0, 64 * 32 * 4);
         programCounter = 0x200;
 
         // Load font into memory starting at address 0x50
@@ -107,12 +107,14 @@ public:
     // Jumps to address NNN
     void OP_1NNN(){
         uint8_t NNN = opcode & 0x0FFFu;
+
         programCounter = NNN;
     }
 
     // Calls subroutine at NNN
     void OP_2NNN(){
         uint16_t NNN = opcode & 0x0FFFu;
+
         stack[stackPointer++] = programCounter;
         programCounter = NNN;
     }
@@ -121,6 +123,7 @@ public:
     void OP_3XNN(){
         uint8_t Vx = opcode & 0x0F00u;
         uint8_t NN = opcode & 0x00FFu;
+
         if(registers[Vx] == NN){
             programCounter += 2;
         }
@@ -130,6 +133,7 @@ public:
     void OP_4XNN(){
         uint8_t Vx = opcode & 0x0F00u;
         uint8_t NN = opcode & 0x00FFu;
+
         if(registers[Vx] != NN){
             programCounter += 2;
         }
@@ -139,6 +143,7 @@ public:
     void OP_5XY0(){
         uint8_t Vx = opcode & 0x0F00u;
         uint8_t Vy = opcode & 0x00F0u;
+
         if(registers[Vx] == registers[Vy]){
             programCounter += 2;
         }
@@ -148,6 +153,7 @@ public:
     void OP_6XNN(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t NN = opcode & 0x00FFu;
+
         registers[Vx] = NN;
     }
 
@@ -155,6 +161,7 @@ public:
     void OP_7XNN(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t NN = opcode & 0x00FFu;
+
         registers[Vx] += NN;
     }
 
@@ -162,6 +169,7 @@ public:
     void OP_8XY0(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
         registers[Vx] = registers[Vy];
     }
 
@@ -169,6 +177,7 @@ public:
     void OP_8XY1(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
         registers[Vx] |= registers[Vy];
     }
 
@@ -176,6 +185,7 @@ public:
     void OP_8XY2(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
         registers[Vx] &= registers[Vy];
     }
 
@@ -183,6 +193,7 @@ public:
     void OP_8XY3(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
         registers[Vx] ^= registers[Vy];
     }
 
@@ -276,66 +287,161 @@ public:
         registers[Vx] = NN & distribution(rng);
     }
 
-    // TODO Draws sprite at coordinate (Vx, Vy) that has a width of 8 pixels and height of N pixels, VF set to 1 if
-    //  any pixels are flipped from set to unset, 0 if not
+    // Draws sprite at coordinate (Vx, Vy) that has a width of 8 pixels and height of N pixels, sprite data is
+    //  read from memory starting at registerI, VF set to 1 if any pixels are flipped from set to unset, 0 if not
     void OP_DXYN(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+        uint8_t N = opcode & 0x000Fu;
 
+        uint8_t xPos = registers[Vx];
+        uint8_t yPos = registers[Vy];
+
+        registers[0xFu] = 0;
+
+        for(int i = 0; i < N; i++){
+            if(yPos + i >= 32){
+                break;
+            }
+            uint8_t spriteRow = memory[registerI + i];
+            for(int j = 0; j < 8; j++){
+                if(xPos + i >= 64){
+                    break;
+                }
+                uint8_t bit = (spriteRow >> (7 - j)) & 0b1u;
+                uint32_t* target = &graphics[xPos + j][yPos + i];
+                if(bit && *target){
+                    registers[0xFu] = 1;
+                }
+                *target ^= bit;
+            }
+        }
     }
 
-    // TODO Skips next instruction if key stored in Vx is pressed
+    // Skips next instruction if key stored in Vx is pressed
     void OP_EX9E(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        if(keys[registers[Vx]]){
+            programCounter += 2;
+        }
     }
 
-    // TODO Skips next instruction if key stored in Vx is not pressed
+    // Skips next instruction if key stored in Vx is not pressed
     void OP_EXA1(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        if(!keys[registers[Vx]]){
+            programCounter += 2;
+        }
     }
 
-    // TODO Sets Vx to value of delayTimer
+    // Sets Vx to value of delayTimer
     void OP_FX07(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        registers[Vx] = delayTimer;
     }
 
-    // TODO Waits for key press, and then stores it in Vx, blocks all further instructions until key press
+    // Waits for key press, and then stores it in Vx, blocks all further instructions until key press
     void OP_FX0A(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        if(keys[0]){
+            registers[Vx] = 0;
+        }else if(keys[1]){
+            registers[Vx] = 1;
+        }else if(keys[2]){
+            registers[Vx] = 2;
+        }else if(keys[3]){
+            registers[Vx] = 3;
+        }else if(keys[4]){
+            registers[Vx] = 4;
+        }else if(keys[5]){
+            registers[Vx] = 5;
+        }else if(keys[6]){
+            registers[Vx] = 6;
+        }else if(keys[7]){
+            registers[Vx] = 7;
+        }else if(keys[8]){
+            registers[Vx] = 8;
+        }else if(keys[9]){
+            registers[Vx] = 9;
+        }else if(keys[10]){
+            registers[Vx] = 10;
+        }else if(keys[11]){
+            registers[Vx] = 11;
+        }else if(keys[12]){
+            registers[Vx] = 12;
+        }else if(keys[13]){
+            registers[Vx] = 13;
+        }else if(keys[14]){
+            registers[Vx] = 14;
+        }else if(keys[15]){
+            registers[Vx] = 15;
+        }else{
+            programCounter -= 2;
+        }
     }
 
-    // TODO Sets delayTimer to Vx
+    // Sets delayTimer to Vx
     void OP_FX15(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        delayTimer = registers[Vx];
     }
 
-    // TODO Sets soundTimer to Vx
+    // Sets soundTimer to Vx
     void OP_FX18(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        soundTimer = registers[Vx];
     }
 
-    // TODO Adds Vx to registerI, VF does not change
+    // Add Vx to registerI, VF does not change
     void OP_FX1E(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        registerI += registers[Vx];
     }
 
-    // TODO Sets registerI to location of the sprite in character Vx
+    // Sets registerI to location of the font data for character Vx
     void OP_FX29(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        std::cout << int(Vx);
 
+        registerI = registers[Vx] * 5 + 0x50;
     }
 
-    // TODO Stores binary-coded decimal representation of Vx, hundreds digit at registerI, tens digit at
+    // Stores binary-coded decimal representation of Vx, hundreds digit at registerI, tens digit at
     //  registerI+1, ones at registerI+2
     void OP_FX33(){
+        uint8_t Vx = opcode & 0x0F00u;
+        uint8_t number = registers[Vx];
 
+        memory[registerI + 2] = number % 10;
+        number /= 10;
+        memory[registerI + 1] = number % 10;
+        number /= 10;
+        memory[registerI] = number % 10;
     }
 
-    // TODO Stores values from V0 to Vx in memory, inclusive, starting at registerI (registerI is unmodified)
+    // Stores values from V0 to Vx in memory, inclusive, starting at registerI (registerI is unmodified)
     void OP_FX55(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        for(int i = 0; i <= Vx; i++){
+            memory[registerI + i] = registers[i];
+        }
     }
 
-    // TODO Fills values from V0 to Vx from memory, inclusive, starting at registerI (registerI is unmodified)
+    // Fills values from V0 to Vx from memory, inclusive, starting at registerI (registerI is unmodified)
     void OP_FX65(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 
+        for(int i = 0; i <= Vx; i++){
+            registers[i] = memory[registerI + i];
+        }
     }
 
     void printMemory(){
@@ -379,7 +485,18 @@ public:
 
         std::cout << "Stack Pointer: " << std::hex << int(stackPointer) << std::endl;
 
+        std::cout << "Register I: " << std::hex << int(registerI) << std::endl;
+
         std::cout << std::endl;
+    }
+
+    void printGraphics(){
+        for(int i = 0; i < 32; i++){
+            for(int j = 0; j < 64; j++){
+                std::cout << graphics[j][i];
+            }
+            std::cout << std::endl;
+        }
     }
 };
 
@@ -388,11 +505,20 @@ public:
 void testSuite(){
     Chip8 chip = Chip8();
     chip.loadROM("test_suite");
-    chip.opcode = 0x60FFu;
+
+    chip.opcode = 0x6070u;
     chip.OP_6XNN();
-    chip.opcode = 0x800E;
-    chip.OP_8XYE();
+
+    chip.opcode = 0xA300u;
+    chip.OP_ANNN();
+
+    chip.opcode = 0xF033u;
+    chip.OP_FX33();
+
+
     chip.printInfo();
+
+    chip.printMemory();
 }
 
 int main() {
