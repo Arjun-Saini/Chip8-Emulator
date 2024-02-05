@@ -123,7 +123,7 @@ public:
 
     // Skips next instruction if Vx == NN
     void OP_3XNN(){
-        uint8_t Vx = opcode & 0x0F00u;
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t NN = opcode & 0x00FFu;
 
         if(registers[Vx] == NN){
@@ -133,7 +133,7 @@ public:
 
     // Skips next instruction if Vx != NN
     void OP_4XNN(){
-        uint8_t Vx = opcode & 0x0F00u;
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t NN = opcode & 0x00FFu;
 
         if(registers[Vx] != NN){
@@ -143,8 +143,8 @@ public:
 
     // Skips next instruction if Vx == Vy
     void OP_5XY0(){
-        uint8_t Vx = opcode & 0x0F00u;
-        uint8_t Vy = opcode & 0x00F0u;
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
 
         if(registers[Vx] == registers[Vy]){
             programCounter += 2;
@@ -417,7 +417,7 @@ public:
     // Stores binary-coded decimal representation of Vx, hundreds digit at registerI, tens digit at
     //  registerI+1, ones at registerI+2
     void OP_FX33(){
-        uint8_t Vx = opcode & 0x0F00u;
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t number = registers[Vx];
 
         memory[registerI + 2] = number % 10;
@@ -656,39 +656,139 @@ uint64_t getTime(){
 int main(int argc, char * argv[]) {
     // Initialize visual interface and chip, run cycles based on a delay (default at 60Hz)
     Chip8 cpu = Chip8();
-    cpu.loadROM(argv[0], "test_opcode");
+    cpu.loadROM(argv[0], "Breakout");
     int scale = 10;
+    const int Hz = 60;
+    const int ms_delta = 1000 / Hz;
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     SDL_Init(SDL_INIT_VIDEO);
     SDL_CreateWindowAndRenderer(64 * scale, 32 * scale, 0, &window, &renderer);
     SDL_RenderSetScale(renderer, scale, scale);
-
     SDL_Point points[64 * 32];
-
-    const int Hz = 60;
-    const int ms_delta = 1000 / Hz;
 
     uint64_t lastTime = getTime();
     uint64_t currentTime;
-
+    
     bool isRunning = true;
     while(isRunning){
         currentTime = getTime();
 
-        // TODO update key inputs
         // TODO play sound
+
+        // Update key inputs
         SDL_Event e;
         while(SDL_PollEvent(&e)){
             if(e.type == SDL_QUIT){
                 isRunning = false;
+            }else if(e.type == SDL_KEYDOWN){
+                switch (e.key.keysym.sym) {
+                    case SDLK_1:
+                        cpu.keys[0x1] = 1;
+                        break;
+                    case SDLK_2:
+                        cpu.keys[0x2] = 1;
+                        break;
+                    case SDLK_3:
+                        cpu.keys[0x3] = 1;
+                        break;
+                    case SDLK_4:
+                        cpu.keys[0xC] = 1;
+                        break;
+                    case SDLK_q:
+                        cpu.keys[0x4] = 1;
+                        break;
+                    case SDLK_w:
+                        cpu.keys[0x5] = 1;
+                        break;
+                    case SDLK_e:
+                        cpu.keys[0x6] = 1;
+                        break;
+                    case SDLK_r:
+                        cpu.keys[0xD] = 1;
+                        break;
+                    case SDLK_a:
+                        cpu.keys[0x7] = 1;
+                        break;
+                    case SDLK_s:
+                        cpu.keys[0x8] = 1;
+                        break;
+                    case SDLK_d:
+                        cpu.keys[0x9] = 1;
+                        break;
+                    case SDLK_f:
+                        cpu.keys[0xE] = 1;
+                        break;
+                    case SDLK_z:
+                        cpu.keys[0xA] = 1;
+                        break;
+                    case SDLK_x:
+                        cpu.keys[0x0] = 1;
+                        break;
+                    case SDLK_c:
+                        cpu.keys[0xB] = 1;
+                        break;
+                    case SDLK_v:
+                        cpu.keys[0xF] = 1;
+                        break;
+                }
+            }else if(e.type == SDL_KEYUP){
+                switch (e.key.keysym.sym) {
+                    case SDLK_1:
+                        cpu.keys[0x1] = 0;
+                        break;
+                    case SDLK_2:
+                        cpu.keys[0x2] = 0;
+                        break;
+                    case SDLK_3:
+                        cpu.keys[0x3] = 0;
+                        break;
+                    case SDLK_4:
+                        cpu.keys[0xC] = 0;
+                        break;
+                    case SDLK_q:
+                        cpu.keys[0x4] = 0;
+                        break;
+                    case SDLK_w:
+                        cpu.keys[0x5] = 0;
+                        break;
+                    case SDLK_e:
+                        cpu.keys[0x6] = 0;
+                        break;
+                    case SDLK_r:
+                        cpu.keys[0xD] = 0;
+                        break;
+                    case SDLK_a:
+                        cpu.keys[0x7] = 0;
+                        break;
+                    case SDLK_s:
+                        cpu.keys[0x8] = 0;
+                        break;
+                    case SDLK_d:
+                        cpu.keys[0x9] = 0;
+                        break;
+                    case SDLK_f:
+                        cpu.keys[0xE] = 0;
+                        break;
+                    case SDLK_z:
+                        cpu.keys[0xA] = 0;
+                        break;
+                    case SDLK_x:
+                        cpu.keys[0x0] = 0;
+                        break;
+                    case SDLK_c:
+                        cpu.keys[0xB] = 0;
+                        break;
+                    case SDLK_v:
+                        cpu.keys[0xF] = 0;
+                        break;
+                }
             }
         }
 
         if(currentTime - lastTime >= ms_delta){
             lastTime = currentTime;
-//            cpu.printInfo();
             cpu.cycle();
 
             // Clear screen
