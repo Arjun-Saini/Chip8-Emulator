@@ -85,11 +85,6 @@ public:
         programCounter += 2;
     }
 
-    // TODO Decodes opcode by using a function table, and processes the instruction accordingly
-    void decodeOpcode(){
-
-    }
-
     // Clears Screen
     void OP_00E0(){
         for(int i = 0; i < 64; i++){
@@ -408,7 +403,6 @@ public:
     // Sets registerI to location of the font data for character Vx
     void OP_FX29(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
-        std::cout << int(Vx);
 
         registerI = registers[Vx] * 5 + 0x50;
     }
@@ -444,6 +438,143 @@ public:
         }
     }
 
+    // Decodes and processes opcode
+    void decodeOpcode(){
+        switch (opcode & 0xF000u) {
+            case 0x0000u:
+                switch (opcode & 0x000Fu) {
+                    case 0x0u:
+                        OP_00E0();
+                        break;
+                    case 0xEu:
+                        OP_00EE();
+                        break;
+                }
+            case 0x1000u:
+                OP_1NNN();
+                break;
+            case 0x2000u:
+                OP_2NNN();
+                break;
+            case 0x3000u:
+                OP_3XNN();
+                break;
+            case 0x4000u:
+                OP_4XNN();
+                break;
+            case 0x5000u:
+                OP_5XY0();
+                break;
+            case 0x6000u:
+                OP_6XNN();
+                break;
+            case 0x7000u:
+                OP_7XNN();
+                break;
+            case 0x8000u:
+                switch (opcode & 0x000Fu) {
+                    case 0x0u:
+                        OP_8XY0();
+                        break;
+                    case 0x1u:
+                        OP_8XY1();
+                        break;
+                    case 0x2u:
+                        OP_8XY2();
+                        break;
+                    case 0x3u:
+                        OP_8XY3();
+                        break;
+                    case 0x4u:
+                        OP_8XY4();
+                        break;
+                    case 0x5u:
+                        OP_8XY5();
+                        break;
+                    case 0x6u:
+                        OP_8XY6();
+                        break;
+                    case 0x7u:
+                        OP_8XY7();
+                        break;
+                    case 0xEu:
+                        OP_8XYE();
+                        break;
+                }
+                break;
+            case 0x9000u:
+                OP_9XY0();
+                break;
+            case 0xA000u:
+                OP_ANNN();
+                break;
+            case 0xB000u:
+                OP_BNNN();
+                break;
+            case 0xC000u:
+                OP_CXNN();
+                break;
+            case 0xD000u:
+                OP_DXYN();
+                break;
+            case 0xE000u:
+                switch (opcode & 0x000Fu) {
+                    case 0x1u:
+                        OP_EXA1();
+                        break;
+                    case 0xEu:
+                        OP_EX9E();
+                        break;
+                }
+                break;
+            case 0xF000u:
+                switch (opcode & 0x00FFu) {
+                    case 0x07u:
+                        OP_FX07();
+                        break;
+                    case 0x0Au:
+                        OP_FX0A();
+                        break;
+                    case 0x15u:
+                        OP_FX15();
+                        break;
+                    case 0x18u:
+                        OP_FX18();
+                        break;
+                    case 0x1Eu:
+                        OP_FX1E();
+                        break;
+                    case 0x29u:
+                        OP_FX29();
+                        break;
+                    case 0x33u:
+                        OP_FX33();
+                        break;
+                    case 0x55u:
+                        OP_FX55();
+                        break;
+                    case 0x65u:
+                        OP_FX65();
+                        break;
+                }
+                break;
+        }
+    }
+
+    // Emulates a single processor cycle
+    void cycle(){
+        getOpcode();
+        decodeOpcode();
+
+        if(delayTimer > 0){
+            delayTimer--;
+        }
+        if(soundTimer > 0){
+            soundTimer--;
+        }
+    }
+
+    // Prints full content of memory
     void printMemory(){
         for(int i = 0; i < 128; i++){
             for(int j = 0; j < 32; j++){
@@ -453,6 +584,7 @@ public:
         }
     }
 
+    // Prints section of memory after 0x200 that contains data
     void printROM(){
         bool flag = false;
         for(int i = 0; i < 128; i++){
@@ -468,6 +600,7 @@ public:
         }
     }
 
+    // Prints information about system variables
     void printInfo(){
         std::cout << "Program Counter: " << std::hex << programCounter << std::endl;
 
@@ -490,6 +623,7 @@ public:
         std::cout << std::endl;
     }
 
+    // Prints graphics array
     void printGraphics(){
         for(int i = 0; i < 32; i++){
             for(int j = 0; j < 64; j++){
@@ -506,19 +640,20 @@ void testSuite(){
     Chip8 chip = Chip8();
     chip.loadROM("test_suite");
 
-    chip.opcode = 0x6070u;
-    chip.OP_6XNN();
+    chip.opcode = 0x6000u;
+    chip.decodeOpcode();
+    chip.opcode = 0x6100u;
+    chip.decodeOpcode();
+    chip.opcode = 0x6208u;
+    chip.decodeOpcode();
 
-    chip.opcode = 0xA300u;
-    chip.OP_ANNN();
+    chip.opcode = 0xF229;
+    chip.decodeOpcode();
 
-    chip.opcode = 0xF033u;
-    chip.OP_FX33();
+    chip.opcode = 0xD015u;
+    chip.decodeOpcode();
 
-
-    chip.printInfo();
-
-    chip.printMemory();
+    chip.printGraphics();
 }
 
 int main() {
