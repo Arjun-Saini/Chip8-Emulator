@@ -651,16 +651,15 @@ uint64_t getTime(){
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-// TODO Video and Audio processing, use SDL?
-
 int main(int argc, char * argv[]) {
-    // Initialize visual interface and chip, run cycles based on a delay (default at 60Hz)
+    // Initialize CPU
     Chip8 cpu = Chip8();
     cpu.loadROM(argv[0], "Breakout");
     int scale = 10;
-    const int Hz = 60;
+    const int Hz = 500;
     const int ms_delta = 1000 / Hz;
 
+    // Initialize graphics
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     SDL_Init(SDL_INIT_VIDEO);
@@ -668,9 +667,9 @@ int main(int argc, char * argv[]) {
     SDL_RenderSetScale(renderer, scale, scale);
     SDL_Point points[64 * 32];
 
-    uint64_t lastTime = getTime();
+    uint64_t lastTime = 0;
     uint64_t currentTime;
-    
+
     bool isRunning = true;
     while(isRunning){
         currentTime = getTime();
